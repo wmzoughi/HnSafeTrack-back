@@ -11,13 +11,13 @@ class Incident extends Model
     public $timestamps = false;
 
     protected $fillable = [
-    'name', 'titre', 'description', 'agent_id', 'round_id', 'site_id',
-    'latitude', 'longitude', 'address', 'type_incident', 'priorite',
-    'statut', 'photo', 'photo_filename', 'commentaires', 'historique',
-    'date_incident', 'date_resolution',
-    'localisation', 'pieces_jointes', 'commentaires_supplementaires',
+        'name', 'titre', 'description', 'agent_id', 'round_id', 'site_id',
+        'latitude', 'longitude', 'address', 'type_incident', 'priorite',
+        'statut', 'photo', 'photo_filename', 'commentaires', 'historique',
+        'date_incident', 'date_resolution',
+        'localisation', 'pieces_jointes', 'commentaires_supplementaires',
+    ];
 
-];
     protected $casts = [
         'date_incident' => 'datetime',
         'date_resolution' => 'datetime',
@@ -117,7 +117,7 @@ class Incident extends Model
         return false;
     }
 
-    // Méthode pour création depuis mobile - CORRIGÉE POUR ODOO
+    // ⭐⭐ MÉTHODE POUR CRÉATION DEPUIS MOBILE - CORRIGÉE
     public static function createFromMobile($data)
     {
         try {
@@ -125,8 +125,9 @@ class Incident extends Model
             $incidentValues = [
                 'titre' => $data['titre'] ?? 'Incident sans titre',
                 'description' => $data['description'] ?? '',
-                'type_incident' => $this->mapToOdooType($data['type_incident'] ?? 'autre'),
-                'priorite' => $this->mapToOdooPriorite($data['priorite'] ?? 'moyenne'),
+                // ⭐⭐ CORRECTION: Utiliser self:: au lieu de $this->
+                'type_incident' => self::mapToOdooType($data['type_incident'] ?? 'autre'),
+                'priorite' => self::mapToOdooPriorite($data['priorite'] ?? 'moyenne'),
                 'agent_id' => $data['agent_id'],
                 // ⭐ IMPORTANT: Ne pas inclure les champs s'ils sont null
                 'round_id' => isset($data['round_id']) && $data['round_id'] != 0 ? $data['round_id'] : null,
@@ -180,8 +181,8 @@ class Incident extends Model
         }
     }
 
-    // Mapper les types vers Odoo
-    private function mapToOdooType($type)
+    // ⭐⭐ CORRECTION: RENDRE CES MÉTHODES STATIQUES
+    private static function mapToOdooType($type)
     {
         $mapping = [
             'anomalie' => 'autre',
@@ -194,8 +195,8 @@ class Incident extends Model
         return $mapping[$type] ?? 'autre';
     }
 
-    // Mapper les priorités vers Odoo
-    private function mapToOdooPriorite($priorite)
+    // ⭐⭐ CORRECTION: RENDRE CES MÉTHODES STATIQUES
+    private static function mapToOdooPriorite($priorite)
     {
         $mapping = [
             'basse' => 'basse',
@@ -217,7 +218,6 @@ class Incident extends Model
         ]);
     }
 
-    // models/Incident.php - CORRECTION
     protected static function boot()
     {
         parent::boot();

@@ -339,54 +339,36 @@ class Pointage extends Model
         }
     }
 
+    // Dans Pointage.php - Modifiez processDepartureIfNeeded()
     private static function processDepartureIfNeeded($affectation, $gpsRecord)
     {
-        // Vérifier qu'un pointage d'arrivée existe
-        $arrivalPointage = self::where('affectation_id', $affectation->id)
-            ->where('type_pointage', self::TYPE_ARRIVEE)
-            ->where('state', '!=', self::STATUT_CANCELLED)
-            ->first();
+        \Log::info('🚀 VÉRIFICATION DÉPART', [
+            'affectation_id' => $affectation->id,
+            'agent' => $affectation->agent_id,
+            'is_in_zone' => $gpsRecord->is_in_zone,
+            'timestamp' => $gpsRecord->timestamp
+        ]);
 
-        if (!$arrivalPointage) {
-            return null;
-        }
-
-        // Vérifier qu'il n'y a pas déjà un pointage de départ
+        // 1. Vérifier si déjà un départ existe
         $existingDeparture = self::where('affectation_id', $affectation->id)
             ->where('type_pointage', self::TYPE_DEPART)
             ->where('state', '!=', self::STATUT_CANCELLED)
             ->first();
 
         if ($existingDeparture) {
+            \Log::info('✅ Départ déjà existant');
             return null;
         }
 
-        // Vérifier si l'agent est actuellement hors zone
+        // ⭐⭐ 2. SIMPLIFIEZ : Si hors zone, créer départ IMMÉDIATEMENT
         if ($gpsRecord->is_in_zone) {
+            \Log::info('📍 Agent dans la zone');
             return null;
         }
 
-        // Vérifier le délai de confirmation (5 minutes)
-        $checkTime = $gpsRecord->timestamp;
-        $thresholdTime = $checkTime->copy()->subMinutes(5);
+        // ⭐⭐ 3. CRÉER LE DÉPART SANS ATTENDRE 5 MINUTES
+        \Log::info('🎯 Création départ automatique');
 
-        // Vérifier si l'agent était dans la zone pendant les 5 dernières minutes
-        $recentInsidePositions = AgentGPSHistory::where('agent_id', $affectation->agent_id)
-            ->where('round_id', $affectation->round_id)
-            ->where('is_in_zone', true)
-            ->where('timestamp', '>=', $thresholdTime)
-            ->where('timestamp', '<', $checkTime)
-            ->first();
-
-        if (!$recentInsidePositions) {
-            return null;
-        }
-
-        // Trouver la dernière position dans la zone
-        $lastInsidePosition = $recentInsidePositions;
-        $departureTime = $lastInsidePosition->timestamp;
-
-        // Créer le pointage de départ
         $pointageData = [
             'agent_id' => $affectation->agent_id,
             'type_pointage' => self::TYPE_DEPART,
@@ -396,29 +378,31 @@ class Pointage extends Model
             'latitude' => $gpsRecord->latitude,
             'longitude' => $gpsRecord->longitude,
             'precision' => $gpsRecord->accuracy,
-            'horodatage_server' => $departureTime,
-            'horodatage_app' => $departureTime,
+            'horodatage_server' => $gpsRecord->timestamp,
+            'horodatage_app' => $gpsRecord->timestamp,
             'state' => self::STATUT_AUTO,
-            'adresse' => $affectation->round->address ?? "Départ anticipé"
+            'adresse' => $affectation->round->address ?? "Départ hors zone"
         ];
 
-        try {
-            $pointage = self::create($pointageData);
+    try {
+        $pointage = self::create($pointageData);
 
-            // Marquer l'affectation comme terminée
-            $affectation->statut_affectation = 'termine';
-            $affectation->save();
+        // ⭐⭐ Mettre à jour l'affectation dans Laravel aussi
+        $affectation->statut_affectation = 'termine';
+        $affectation->save();
 
-            // TODO: Ajouter un message au système de notification
+        \Log::info('✅ Pointage départ créé', [
+            'id' => $pointage->id,
+            'heure' => $pointage->horodatage_server
+        ]);
 
-            return $pointage;
+        return $pointage;
 
-        } catch (\Exception $e) {
-            \Log::error('Erreur création pointage départ: ' . $e->getMessage());
-            return null;
-        }
+    } catch (\Exception $e) {
+        \Log::error('❌ Erreur création départ: ' . $e->getMessage());
+        return null;
     }
-
+}
     // Cron pour gérer les départs à la date_fin des affectations
     public static function processScheduledDepartures()
     {

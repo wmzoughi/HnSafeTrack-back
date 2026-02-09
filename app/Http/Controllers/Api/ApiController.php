@@ -124,7 +124,6 @@ class ApiController extends Controller
         DB::beginTransaction();
 
         try {
-            Log::info('📝 INSCRIPTION PUBLIQUE COMPLÈTE - DÉBUT');
 
             // ================= VALIDATION =================
             $request->validate([
@@ -202,7 +201,6 @@ class ApiController extends Controller
             // Mais alors votre app Flutter devra s'authentifier différemment
 
             // ================= CRÉATION DANS ODOO (res_partner + res_users) =================
-            Log::info('🔄 Création dans tables Odoo...');
             
             // 1. Créer dans res_partner - CHAMPS ESSENTIELS SEULEMENT
             $partnerData = [
@@ -255,6 +253,7 @@ class ApiController extends Controller
 
             $partnerId = DB::table('res_partner')->insertGetId($filteredPartnerData);
             Log::info('✅ Partenaire créé dans res_partner - ID: ' . $partnerId);
+
 
             // 2. Créer dans res_users - CHAMPS ESSENTIELS SEULEMENT AVEC TOKEN
             $userData = [
@@ -467,6 +466,7 @@ class ApiController extends Controller
         try {
             $login = $request->input('login') ?? $request->input('email');
             
+
             // 1. Authentifier via l'API Odoo
             $authResult = $this->authenticateViaOdooApi($login, $request->password);
             
@@ -572,12 +572,10 @@ class ApiController extends Controller
 
             $data = json_decode($response->getBody(), true);
             
-            \Log::info('Odoo API response:', $data);
             
             return $data['result'] ?? null;
 
         } catch (\Exception $e) {
-            \Log::error('Odoo API error: ' . $e->getMessage());
             return null;
         }
     }
@@ -723,7 +721,6 @@ class ApiController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur getUsersPublic: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur de récupération des utilisateurs',
@@ -811,7 +808,6 @@ class ApiController extends Controller
             ], 500);
         }
     }
-
     /**
      * Trouver ou créer un superviseur dans agent_tracking_superviseur
      */
@@ -1982,7 +1978,6 @@ class ApiController extends Controller
             $user = $this->authenticateToken($request);
             
             if ($user) {
-                // Vérifier si l'objet $user a une propriété nom_complet
                 $nom_complet = property_exists($user, 'nom_complet') 
                     ? $user->nom_complet 
                     : ($user->name ?? 'Utilisateur');
@@ -2006,7 +2001,6 @@ class ApiController extends Controller
             ], 401);
             
         } catch (\Exception $e) {
-            \Log::error('Erreur verifyToken: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'valid' => false,
